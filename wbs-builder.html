@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WBS Builder</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --card: #1c2130;
+    --border: #2a3040;
+    --border2: #333d55;
+    --accent: #4e9af1;
+    --accent2: #2d6bc4;
+    --green: #3fb68e;
+    --red: #e05a5a;
+    --yellow: #d4a843;
+    --purple: #9b72cf;
+    --orange: #d4834a;
+    --text: #e2e8f8;
+    --muted: #5a6580;
+    --muted2: #8892a4;
+    --shadow: 0 4px 24px #00000066;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'PingFang TC', 'Noto Sans TC', system-ui, sans-serif;
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* ── Header ── */
+  #header {
+    position: sticky; top: 0; z-index: 200;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: var(--shadow);
+  }
+  #header h1 {
+    font-size: 16px; font-weight: 700; letter-spacing: 1px;
+    color: var(--accent); flex-shrink: 0;
+  }
+  #header .subtitle { font-size: 10px; color: var(--muted2); margin-top: 1px; }
+  #header-actions { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+
+  .btn {
+    padding: 6px 14px; border-radius: 7px; border: 1px solid transparent;
+    cursor: pointer; font-size: 12px; font-weight: 600;
+    font-family: inherit; transition: all 0.15s; background: transparent;
+    white-space: nowrap;
+  }
+  .btn-accent { border-color: #4e9af155; color: var(--accent); }
+  .btn-accent:hover { background: #4e9af122; }
+  .btn-green { border-color: #3fb68e55; color: var(--green); }
+  .btn-green:hover { background: #3fb68e22; }
+  .btn-muted { border-color: #5a658055; color: var(--muted2); }
+  .btn-muted:hover { background: #5a658022; }
+  .btn-red { border-color: #e05a5a55; color: var(--red); }
+  .btn-red:hover { background: #e05a5a22; }
+
+  /* ── AI Panel ── */
+  #ai-panel {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 14px 20px; display: none; gap: 12px; align-items: flex-end;
+    animation: slideDown 0.2s ease;
+  }
+  #ai-panel.open { display: flex; }
+  #ai-panel textarea {
+    flex: 1; background: var(--surface); border: 1px solid var(--border2);
+    color: var(--text); border-radius: 8px; padding: 10px 12px;
+    font-size: 13px; font-family: inherit; outline: none; resize: vertical;
+    min-height: 64px;
+  }
+  #ai-panel textarea:focus { border-color: var(--accent); }
+  #ai-panel .ai-btns { display: flex; flex-direction: column; gap: 6px; }
+
+  /* ── Main ── */
+  #main { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
+
+  /* ── Tree ── */
+  #tree { min-height: 200px; }
+  .empty-state {
+    text-align: center; color: var(--muted); margin-top: 60px;
+    font-size: 13px; line-height: 2;
+  }
+
+  /* ── Node ── */
+  .node-row {
+    display: flex; align-items: center; gap: 6px;
+    border-radius: 8px; padding: 5px 10px;
+    border-left: 3px solid transparent;
+    transition: background 0.12s, border-color 0.12s;
+    cursor: grab; user-select: none; position: relative;
+    margin-bottom: 2px;
+  }
+  .node-row:hover { background: #ffffff08; }
+  .node-row.drag-over { border-left-color: var(--accent) !important; background: #4e9af115; }
+  .node-row.dragging { opacity: 0.35; }
+
+  .toggle-btn {
+    width: 18px; height: 18px; border-radius: 4px;
+    background: transparent; border: none; color: var(--muted);
+    font-size: 9px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.1s;
+  }
+  .toggle-btn.has-children { background: var(--border2); }
+  .toggle-btn:hover { color: var(--text); }
+
+  .num-badge {
+    font-size: 10px; font-family: 'Courier New', monospace;
+    border-radius: 4px; padding: 1px 5px; flex-shrink: 0;
+    min-width: 28px; text-align: center;
+  }
+  .level-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  .node-title {
+    flex: 1; font-size: 13px; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .node-title[contenteditable="true"] {
+    outline: 1px solid var(--accent); border-radius: 4px;
+    padding: 1px 6px; background: var(--surface);
+    white-space: nowrap; min-width: 60px;
+  }
+
+  .node-actions {
+    display: flex; gap: 3px; opacity: 0; transition: opacity 0.15s;
+  }
+  .node-row:hover .node-actions { opacity: 1; }
+
+  .act-btn {
+    width: 20px; height: 20px; border-radius: 4px; border: none;
+    background: transparent; color: var(--muted);
+    font-size: 11px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: all 0.1s; font-family: inherit;
+  }
+  .act-btn:hover { background: #ffffff18; }
+  .act-btn.add:hover { color: var(--green); }
+  .act-btn.child:hover { color: var(--accent); }
+  .act-btn.del:hover { color: var(--red); }
+
+  /* ── Stats ── */
+  #stats {
+    margin-top: 28px; padding: 12px 18px;
+    background: var(--surface); border-radius: 10px;
+    border: 1px solid var(--border);
+    display: flex; gap: 28px; font-size: 12px; color: var(--muted2);
+  }
+  #stats .stat-val { color: var(--text); font-weight: 700; font-size: 17px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--green); color: #fff;
+    border-radius: 8px; padding: 10px 18px;
+    font-size: 13px; font-weight: 600;
+    box-shadow: 0 4px 20px #00000066;
+    z-index: 999; display: none;
+    animation: fadeUp 0.2s ease;
+  }
+  #toast.error { background: var(--red); }
+
+  /* ── Animations ── */
+  @keyframes slideDown { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:none } }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(8px) } to { opacity:1; transform:none } }
+
+  /* ── Toolbar separator ── */
+  .sep { width: 1px; background: var(--border); height: 20px; flex-shrink: 0; }
+
+  /* ── Loading overlay ── */
+  #loading {
+    position: fixed; inset: 0; background: #0d111799;
+    display: none; align-items: center; justify-content: center;
+    z-index: 500; font-size: 15px; color: var(--accent); font-weight: 600;
+  }
+  #loading.show { display: flex; }
+  .spinner {
+    width: 22px; height: 22px; border: 3px solid var(--border2);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.7s linear infinite; margin-right: 10px;
+  }
+  @keyframes spin { to { transform: rotate(360deg) } }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div>
+    <h1>⬡ WBS Builder</h1>
+    <div class="subtitle">工作分解結構 · 離線版</div>
+  </div>
+  <div id="header-actions">
+    <button class="btn btn-accent" onclick="toggleAI()">✦ AI 生成</button>
+    <div class="sep"></div>
+    <button class="btn btn-green" onclick="addRoot()">＋ 新增群組</button>
+    <div class="sep"></div>
+    <button class="btn btn-muted" onclick="exportCSV()">⬇ CSV/Excel</button>
+    <button class="btn btn-muted" onclick="exportJSON()">⬇ JSON</button>
+    <button class="btn btn-muted" onclick="importJSON()">⬆ 匯入</button>
+  </div>
+</div>
+
+<!-- AI Panel -->
+<div id="ai-panel">
+  <textarea id="ai-prompt" rows="3" placeholder="描述你的專案，例如：「開發電商平台，包含前台購物、後台管理、金流串接、部署上線」&#10;AI 將自動產生 WBS 樹狀結構（需要連線）"></textarea>
+  <div class="ai-btns">
+    <button class="btn btn-accent" onclick="runAI()">產生 WBS</button>
+    <button class="btn btn-muted" onclick="toggleAI()">取消</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="tree"></div>
+  <div id="stats">
+    <div><span class="stat-val" id="s-total">0</span> 工作項目</div>
+    <div><span class="stat-val" id="s-roots">0</span> 主要群組</div>
+    <div><span class="stat-val" id="s-depth">0</span> 最大層級</div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Loading -->
+<div id="loading"><div class="spinner"></div>AI 產生中…</div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="file-input" accept=".json" style="display:none" onchange="handleImport(event)">
+
+<script>
+// ── State ──
+const LEVEL_COLORS = ['#4e9af1','#3fb68e','#d4a843','#9b72cf','#d4834a'];
+
+let tree = [
+  { id: uid(), title: '專案規劃', children: [
+    { id: uid(), title: '需求訪談', children: [] },
+    { id: uid(), title: '時程規劃', children: [] },
+    { id: uid(), title: '資源評估', children: [] },
+  ]},
+  { id: uid(), title: '系統設計', children: [
+    { id: uid(), title: '架構設計', children: [
+      { id: uid(), title: '前端架構', children: [] },
+      { id: uid(), title: '後端架構', children: [] },
+      { id: uid(), title: '資料庫設計', children: [] },
+    ]},
+    { id: uid(), title: 'UI/UX 設計', children: [] },
+  ]},
+  { id: uid(), title: '開發實作', children: [
+    { id: uid(), title: '前端開發', children: [] },
+    { id: uid(), title: '後端開發', children: [] },
+    { id: uid(), title: 'API 串接', children: [] },
+  ]},
+  { id: uid(), title: '測試驗收', children: [
+    { id: uid(), title: '單元測試', children: [] },
+    { id: uid(), title: '整合測試', children: [] },
+    { id: uid(), title: '使用者驗收', children: [] },
+  ]},
+  { id: uid(), title: '部署上線', children: [] },
+];
+
+let collapsed = {};
+let draggingId = null;
+let overId = null;
+
+function uid() { return Math.random().toString(36).slice(2,9); }
+
+// ── Tree utils ──
+function flatten(nodes, parentId=null, level=0) {
+  const res = [];
+  nodes.forEach((n,i) => {
+    res.push({ ...n, parentId, level, hasChildren: n.children.length > 0 });
+    if (!collapsed[n.id]) res.push(...flatten(n.children, n.id, level+1));
+  });
+  return res;
+}
+
+function allFlat(nodes, level=0) {
+  const res = [];
+  nodes.forEach(n => {
+    res.push({ ...n, level });
+    res.push(...allFlat(n.children, level+1));
+  });
+  return res;
+}
+
+function numbering(nodes, prefix='') {
+  const map = {};
+  nodes.forEach((n,i) => {
+    const num = prefix ? `${prefix}.${i+1}` : `${i+1}`;
+    map[n.id] = num;
+    Object.assign(map, numbering(n.children, num));
+  });
+  return map;
+}
+
+function findNode(nodes, id) {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    const found = findNode(n.children, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+function removeNode(nodes, id) {
+  let removed = null;
+  const filter = arr => arr.reduce((acc, n) => {
+    if (n.id === id) { removed = JSON.parse(JSON.stringify(n)); return acc; }
+    acc.push({ ...n, children: filter(n.children) });
+    return acc;
+  }, []);
+  return [filter(nodes), removed];
+}
+
+function insertAfter(nodes, targetId, newNode) {
+  return nodes.reduce((acc, n) => {
+    acc.push({ ...n, children: insertAfter(n.children, targetId, newNode) });
+    if (n.id === targetId) acc.push(newNode);
+    return acc;
+  }, []);
+}
+
+function addChildTo(nodes, parentId, newNode) {
+  return nodes.map(n => {
+    if (n.id === parentId) return { ...n, children: [...n.children, newNode] };
+    return { ...n, children: addChildTo(n.children, parentId, newNode) };
+  });
+}
+
+function updateNodeTitle(nodes, id, title) {
+  return nodes.map(n => {
+    if (n.id === id) return { ...n, title };
+    return { ...n, children: updateNodeTitle(n.children, id, title) };
+  });
+}
+
+// ── Render ──
+function render() {
+  const nums = numbering(tree);
+  const all = allFlat(tree);
+  const vis = flatten(tree);
+  const treeEl = document.getElementById('tree');
+
+  if (all.length === 0) {
+    treeEl.innerHTML = '<div class="empty-state">尚無工作項目<br>點擊「新增群組」或使用 AI 生成</div>';
+  } else {
+    treeEl.innerHTML = '';
+    vis.forEach(node => {
+      const col = LEVEL_COLORS[node.level % LEVEL_COLORS.length];
+      const row = document.createElement('div');
+      row.className = 'node-row';
+      row.dataset.id = node.id;
+      row.style.paddingLeft = (12 + node.level * 24) + 'px';
+      row.style.borderLeftColor = 'transparent';
+      row.draggable = true;
+
+      // Toggle
+      const tog = document.createElement('button');
+      tog.className = 'toggle-btn' + (node.hasChildren ? ' has-children' : '');
+      tog.textContent = node.hasChildren ? (collapsed[node.id] ? '▶' : '▼') : '';
+      tog.onclick = e => { e.stopPropagation(); collapsed[node.id] = !collapsed[node.id]; render(); };
+      row.appendChild(tog);
+
+      // Number
+      const badge = document.createElement('span');
+      badge.className = 'num-badge';
+      badge.textContent = nums[node.id] || '';
+      badge.style.color = col;
+      badge.style.background = col + '18';
+      row.appendChild(badge);
+
+      // Dot
+      const dot = document.createElement('span');
+      dot.className = 'level-dot';
+      dot.style.background = col;
+      dot.style.boxShadow = `0 0 6px ${col}88`;
+      row.appendChild(dot);
+
+      // Title
+      const title = document.createElement('span');
+      title.className = 'node-title';
+      title.textContent = node.title;
+      title.title = '雙擊編輯';
+      title.ondblclick = e => { e.stopPropagation(); startEdit(node.id, title); };
+      row.appendChild(title);
+
+      // Actions
+      const acts = document.createElement('div');
+      acts.className = 'node-actions';
+
+      const mkBtn = (label, cls, tip, fn) => {
+        const b = document.createElement('button');
+        b.className = `act-btn ${cls}`;
+        b.textContent = label;
+        b.title = tip;
+        b.onclick = e => { e.stopPropagation(); fn(); };
+        return b;
+      };
+
+      acts.appendChild(mkBtn('＋','add','新增同層', () => addSibling(node.id)));
+      if (node.level < 4) acts.appendChild(mkBtn('⤵','child','新增子項', () => addChildNode(node.id)));
+      acts.appendChild(mkBtn('✕','del','刪除', () => deleteNode(node.id)));
+      row.appendChild(acts);
+
+      // Drag events
+      row.addEventListener('dragstart', e => {
+        draggingId = node.id;
+        setTimeout(() => row.classList.add('dragging'), 0);
+      });
+      row.addEventListener('dragend', () => {
+        draggingId = null; overId = null;
+        document.querySelectorAll('.drag-over,.dragging').forEach(el => {
+          el.classList.remove('drag-over','dragging');
+        });
+      });
+      row.addEventListener('dragover', e => {
+        e.preventDefault();
+        if (draggingId === node.id) return;
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        row.classList.add('drag-over');
+        overId = node.id;
+      });
+      row.addEventListener('drop', e => {
+        e.preventDefault();
+        if (!draggingId || draggingId === node.id) return;
+        const [without, moved] = removeNode(tree, draggingId);
+        if (moved) tree = insertAfter(without, node.id, moved);
+        draggingId = null; overId = null;
+        render();
+      });
+
+      treeEl.appendChild(row);
+    });
+  }
+
+  // Stats
+  const allNodes = allFlat(tree);
+  document.getElementById('s-total').textContent = allNodes.length;
+  document.getElementById('s-roots').textContent = tree.length;
+  const maxDepth = allNodes.length ? Math.max(...allNodes.map(n => n.level)) + 1 : 0;
+  document.getElementById('s-depth').textContent = maxDepth;
+}
+
+// ── Edit ──
+function startEdit(id, titleEl) {
+  titleEl.contentEditable = 'true';
+  titleEl.focus();
+  // select all
+  const range = document.createRange();
+  range.selectNodeContents(titleEl);
+  window.getSelection().removeAllRanges();
+  window.getSelection().addRange(range);
+
+  const commit = () => {
+    titleEl.contentEditable = 'false';
+    const val = titleEl.textContent.trim();
+    if (val) tree = updateNodeTitle(tree, id, val);
+    else { const n = findNode(tree, id); if (n) titleEl.textContent = n.title; }
+    titleEl.removeEventListener('blur', commit);
+    titleEl.removeEventListener('keydown', onKey);
+  };
+  const onKey = e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') { titleEl.contentEditable='false'; const n=findNode(tree,id); if(n) titleEl.textContent=n.title; }
+  };
+  titleEl.addEventListener('blur', commit);
+  titleEl.addEventListener('keydown', onKey);
+}
+
+// ── CRUD ──
+function addRoot() {
+  tree.push({ id: uid(), title: '新工作群組', children: [] });
+  render();
+}
+
+function addSibling(id) {
+  tree = insertAfter(tree, id, { id: uid(), title: '新工作項目', children: [] });
+  render();
+}
+
+function addChildNode(parentId) {
+  tree = addChildTo(tree, parentId, { id: uid(), title: '新子項目', children: [] });
+  collapsed[parentId] = false;
+  render();
+}
+
+function deleteNode(id) {
+  const [nt] = removeNode(tree, id);
+  tree = nt;
+  render();
+}
+
+// ── AI ──
+function toggleAI() {
+  const panel = document.getElementById('ai-panel');
+  panel.classList.toggle('open');
+}
+
+async function runAI() {
+  const prompt = document.getElementById('ai-prompt').value.trim();
+  if (!prompt) return;
+  document.getElementById('loading').classList.add('show');
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{
+          role: 'user',
+          content: `你是專案管理助手，根據以下描述產生 WBS 結構，只回傳 JSON 陣列，不加任何說明或 markdown 包裝，格式：
+[{"title":"...","children":[{"title":"...","children":[]},...]},...]
+
+專案描述：${prompt}`
+        }]
+      })
+    });
+    const data = await res.json();
+    const text = (data.content?.[0]?.text || '[]').replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(text);
+    tree = injectIds(parsed);
+    collapsed = {};
+    document.getElementById('ai-panel').classList.remove('open');
+    document.getElementById('ai-prompt').value = '';
+    render();
+    showToast('AI 已產生 WBS 結構 ✓');
+  } catch(e) {
+    showToast('AI 產生失敗：' + e.message, true);
+  }
+  document.getElementById('loading').classList.remove('show');
+}
+
+function injectIds(nodes, level=0) {
+  return (nodes||[]).map(n => ({
+    id: uid(), title: n.title || '未命名',
+    children: injectIds(n.children, level+1)
+  }));
+}
+
+// ── Export ──
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(tree, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='wbs.json'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('JSON 已匯出');
+}
+
+function exportCSV() {
+  const nums = numbering(tree);
+  const rows = [['編號','層級','工作項目']];
+  const walk = (nodes, level=0) => nodes.forEach(n => {
+    rows.push([nums[n.id], level+1, n.title]);
+    walk(n.children, level+1);
+  });
+  walk(tree);
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const bom = '\uFEFF';
+  const blob = new Blob([bom+csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='wbs.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV 已匯出（Excel 可直接開啟）');
+}
+
+function importJSON() {
+  document.getElementById('file-input').click();
+}
+
+function handleImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try {
+      const data = JSON.parse(evt.target.result);
+      tree = injectIds(data); // re-assign ids for safety
+      collapsed = {};
+      render();
+      showToast('JSON 已匯入 ✓');
+    } catch {
+      showToast('匯入失敗：JSON 格式錯誤', true);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── Toast ──
+let toastTimer;
+function showToast(msg, isError=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = isError ? 'error' : '';
+  el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display='none'; }, 2800);
+}
+
+// ── Init ──
+render();
+</script>
+</body>
+</html>
