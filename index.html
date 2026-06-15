@@ -37,7 +37,9 @@
     position: sticky; top: 0; z-index: 200;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 14px 24px;
+    padding-top: 14px; padding-bottom: 14px;
+    padding-left: max(24px, calc((100% - 1100px) / 2 + 24px));
+    padding-right: max(24px, calc((100% - 1100px) / 2 + 24px));
     display: flex; align-items: center; gap: 14px;
     box-shadow: var(--shadow);
   }
@@ -174,7 +176,10 @@
   /* ── Template Panel ── */
   #tpl-panel {
     background: var(--card); border-bottom: 1px solid var(--border);
-    padding: 14px 20px; display: none; gap: 12px; flex-wrap: wrap;
+    padding-top: 14px; padding-bottom: 14px;
+    padding-left: max(20px, calc((100% - 1100px) / 2 + 20px));
+    padding-right: max(20px, calc((100% - 1100px) / 2 + 20px));
+    display: none; gap: 12px; flex-wrap: wrap;
     animation: slideDown 0.2s ease;
   }
   #tpl-panel.open { display: flex; }
@@ -533,7 +538,7 @@ function render() {
       const row = document.createElement('div');
       row.className = 'node-row';
       row.dataset.id = node.id;
-      row.style.paddingLeft = (12 + node.level * 24) + 'px';
+      row.style.paddingLeft = (24 + node.level * 26) + 'px';
       row.style.borderLeftColor = 'transparent';
       row.draggable = true;
 
