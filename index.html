@@ -101,7 +101,8 @@
     margin-bottom: 3px;
   }
   .node-row:hover { background: var(--canvas-hover); }
-  .node-row.drag-over { border-left-color: var(--accent) !important; background: #4e9af128; }
+  .node-row.drag-over-before { border-left-color: var(--accent) !important; background: #4e9af128; }
+  .node-row.drag-over-child  { border-left-color: var(--green)  !important; background: #3fb68e1a; }
   .node-row.dragging { opacity: 0.35; }
 
   .toggle-btn {
@@ -574,6 +575,34 @@ function updateNodeField(nodes, id, field, value) {
   });
 }
 
+function insertBefore(nodes, targetId, newNode) {
+  return nodes.reduce((acc, n) => {
+    if (n.id === targetId) acc.push(newNode);
+    acc.push({ ...n, children: insertBefore(n.children, targetId, newNode) });
+    return acc;
+  }, []);
+}
+
+function isDescendant(nodes, ancestorId, targetId) {
+  const anc = findNode(nodes, ancestorId);
+  if (!anc) return false;
+  return !!findNode(anc.children, targetId);
+}
+
+function getNodeDepth(nodes, id, depth=0) {
+  for (const n of nodes) {
+    if (n.id === id) return depth;
+    const d = getNodeDepth(n.children, id, depth+1);
+    if (d !== -1) return d;
+  }
+  return -1;
+}
+
+function subtreeDepth(node) {
+  if (!node.children.length) return 0;
+  return 1 + Math.max(...node.children.map(subtreeDepth));
+}
+
 // ── Render ──
 function render() {
   const nums = numbering(tree);
@@ -686,24 +715,46 @@ function render() {
         setTimeout(() => row.classList.add('dragging'), 0);
       });
       row.addEventListener('dragend', () => {
-        draggingId = null; overId = null;
-        document.querySelectorAll('.drag-over,.dragging').forEach(el => {
-          el.classList.remove('drag-over','dragging');
+        draggingId = null; overId = null; dropPosition = null;
+        document.querySelectorAll('.drag-over-before,.drag-over-child,.dragging').forEach(el => {
+          el.classList.remove('drag-over-before','drag-over-child','dragging');
         });
       });
       row.addEventListener('dragover', e => {
         e.preventDefault();
         if (draggingId === node.id) return;
-        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-        row.classList.add('drag-over');
+        document.querySelectorAll('.drag-over-before,.drag-over-child').forEach(el => {
+          el.classList.remove('drag-over-before','drag-over-child');
+        });
+        const rect = row.getBoundingClientRect();
+        dropPosition = e.clientY >= rect.top + rect.height * 0.5 ? 'child' : 'before';
+        row.classList.add(dropPosition === 'child' ? 'drag-over-child' : 'drag-over-before');
         overId = node.id;
       });
       row.addEventListener('drop', e => {
         e.preventDefault();
         if (!draggingId || draggingId === node.id) return;
+        if (isDescendant(tree, draggingId, node.id)) {
+          showToast('無法拖曳到自身的子節點', true);
+          draggingId = null; overId = null; dropPosition = null;
+          return;
+        }
         const [without, moved] = removeNode(tree, draggingId);
-        if (moved) tree = insertAfter(without, node.id, moved);
-        draggingId = null; overId = null;
+        if (!moved) { draggingId = null; overId = null; dropPosition = null; return; }
+        const targetDepth = getNodeDepth(without, node.id);
+        const newDepth = dropPosition === 'child' ? targetDepth + 1 : targetDepth;
+        if (newDepth + subtreeDepth(moved) > 4) {
+          showToast('已達最大層級（5 層）', true);
+          draggingId = null; overId = null; dropPosition = null;
+          return;
+        }
+        if (dropPosition === 'child') {
+          tree = addChildTo(without, node.id, moved);
+          collapsed[node.id] = false;
+        } else {
+          tree = insertBefore(without, node.id, moved);
+        }
+        draggingId = null; overId = null; dropPosition = null;
         render();
       });
 
