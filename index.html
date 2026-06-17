@@ -266,6 +266,18 @@
     #toast { left: 14px; right: 14px; bottom: 14px; text-align: center; }
   }
 
+  /* ── Status Badge ── */
+  .status-badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px;
+    cursor: pointer; flex-shrink: 0; font-weight: 600;
+    border: 1px solid transparent; transition: opacity 0.15s;
+    white-space: nowrap;
+  }
+  .status-badge:hover { opacity: 0.7; }
+  .status-not-started { color: var(--muted2); border-color: var(--muted2); }
+  .status-in-progress { color: var(--yellow); border-color: var(--yellow); }
+  .status-done        { color: var(--green);  border-color: var(--green);  }
+
 </style>
 </head>
 <body>
@@ -587,6 +599,14 @@ function render() {
       dot.style.boxShadow = `0 0 6px ${col}88`;
       row.appendChild(dot);
 
+      // Status badge
+      const status = node.status || 'not-started';
+      const sBadge = document.createElement('span');
+      sBadge.className = `status-badge status-${status}`;
+      sBadge.textContent = STATUS_LABEL[status];
+      sBadge.onclick = e => { e.stopPropagation(); cycleStatus(node.id, status); };
+      row.appendChild(sBadge);
+
       // Title
       const title = document.createElement('span');
       title.className = 'node-title';
@@ -674,6 +694,12 @@ function render() {
   document.getElementById('s-roots').textContent = tree.length;
   const maxDepth = allNodes.length ? Math.max(...allNodes.map(n => n.level)) + 1 : 0;
   document.getElementById('s-depth').textContent = maxDepth;
+}
+
+// ── Status ──
+function cycleStatus(id, current) {
+  tree = updateNodeField(tree, id, 'status', STATUS_CYCLE[current] || 'not-started');
+  render();
 }
 
 // ── Edit ──
