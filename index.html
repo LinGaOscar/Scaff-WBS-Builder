@@ -875,6 +875,7 @@ function addChildNode(parentId) {
 function deleteNode(id) {
   const [nt] = removeNode(tree, id);
   tree = nt;
+  delete expandedNotes[id];
   render();
 }
 
