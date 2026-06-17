@@ -70,23 +70,23 @@ let dropPosition = null;    // 'before' | 'child'，dragover 時更新
 | `insertAfter(nodes, targetId, newNode)` | 插入目標節點之後（同層） |
 | `addChildTo(nodes, parentId, newNode)` | 插入指定節點的子列表末尾 |
 | `updateNodeTitle(nodes, id, title)` | 不可變更新標題 |
-| `updateNodeField(nodes, id, field, value)` | 不可變更新任意欄位（`owner`/`startDate`/`endDate`） |
+| `updateNodeField(nodes, id, field, value)` | 不可變更新任意欄位（`owner`/`startDate`/`endDate`/`status`/`notes`） |
 | `startEdit(id, titleEl)` | 啟動標題行內編輯（`contenteditable`），Enter 或 blur 確認 |
 | `startMetaEdit(id, field, el, placeholder)` | 啟動 meta 欄位編輯；日期欄位用 `<input type="date">` 並呼叫 `showPicker()` |
-| `injectIds(nodes)` | 遞迴補 uid 並補齊 `owner/startDate/endDate`，用於套用模板或 JSON 匯入時重建節點 |
+| `injectIds(nodes)` | 遞迴補 uid 並補齊 `owner/startDate/endDate/status/notes`，用於套用模板或 JSON 匯入時重建節點 |
 | `cycleStatus(id, current)` | 循環切換節點狀態（not-started→in-progress→done→not-started）並 render |
 | `insertBefore(nodes, targetId, newNode)` | 插入目標節點之前（同層） |
 | `isDescendant(nodes, ancestorId, targetId)` | 判斷 targetId 是否為 ancestorId 的後代（防循環拖曳） |
 | `getNodeDepth(nodes, id, depth)` | 取得節點在樹中的深度（0-indexed） |
 | `subtreeDepth(node)` | 取得節點子樹的最大高度（用於拖曳層級限制） |
 
-**拖曳排序**：`dragstart/drop` 事件觸發 `removeNode` + `insertAfter`，目前僅支援同層重排；跨層拖曳為第 2 階段目標。
+**拖曳排序**：`dragstart/drop` 事件觸發 `removeNode` + `insertBefore`/`addChildTo`。`dragover` 以 `getBoundingClientRect()` 判斷游標位置（上半 = 同層插前、下半 = 成子項），支援跨層移動；層級超過 5 層或拖曳到自身後代時阻擋。
 
 **WBS 模板**：`TEMPLATES` 物件（feature／system／project 三種）定義純資料樹（不含 id），`applyTemplate(key)` 以 `injectIds()` 補 id 後整棵取代 `tree`，確認框防止誤觸。新增模板請直接擴充 `TEMPLATES`，並在 `#tpl-panel` 加對應 `.tpl-card`。
 
 > ⚠️ 注意：早期版本曾有「AI 生成」功能（直接呼叫 Anthropic API），已於 commit `32b4194` 移除，目前程式碼**沒有**任何 AI 相關邏輯。`建置計畫書.md` 中提及 AI 生成的段落已過時，請勿依此重新引入。
 
-**匯出 CSV**：含 UTF-8 BOM（`﻿`），確保 Excel 直接開啟中文不亂碼；欄位含編號、層級、工作項目、負責人、開始/結束日期。
+**匯出 CSV**：含 UTF-8 BOM（`﻿`），確保 Excel 直接開啟中文不亂碼；欄位含編號、層級、工作項目、負責人、開始/結束日期、狀態。
 
 **配色慣例**：`:root` 中區分兩組色彩——`--bg/--surface/--card` 等深色變數用於 Header／模板面板（外層），`--canvas/--on-canvas*` 等淺色變數用於 `#tree` 卡片內部（淺色卡片設計）。新增 UI 元件時依其所在區塊（外層深色 vs. 樹狀卡片內淺色）挑選對應變數，勿混用。
 
