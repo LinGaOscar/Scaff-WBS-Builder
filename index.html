@@ -367,16 +367,12 @@
 <!-- Template Panel -->
 <div id="tpl-panel">
   <div class="tpl-card" onclick="applyTemplate('feature')">
-    <h3>📋 新功能開發</h3>
-    <p>需求分析 → 開發實作<br>→ 環境與防火牆 → 上線準備</p>
-  </div>
-  <div class="tpl-card" onclick="applyTemplate('system')">
-    <h3>🚀 新系統建置</h3>
-    <p>需求規劃 → 系統設計 → 開發<br>→ 環境基礎設施 → 驗收 → 上線</p>
+    <h3>🔧 新功能開發</h3>
+    <p>SIT：環境建置 → 功能 / 整合測試 → IT 測試報告<br>PROD：環境建置 → 上線準備 → 系統上線</p>
   </div>
   <div class="tpl-card" onclick="applyTemplate('project')">
-    <h3>🏗 專案交付</h3>
-    <p>專案啟動 → 需求 → 規劃 → 執行<br>→ 環境部署 → 交付收尾</p>
+    <h3>🏗 專案開發</h3>
+    <p>SIT：環境建置 → 功能 / 整合測試 → 黑白箱 / 第三方 → IT 測試報告<br>PROD：環境建置 → 上線準備 → 系統上線</p>
   </div>
 </div>
 
@@ -430,106 +426,70 @@ const LEVEL_COLORS = ['#4e9af1','#3fb68e','#d4a843','#9b72cf','#d4834a'];
 // ── Templates ──
 const TEMPLATES = {
   feature: [
-    { title: '需求分析', children: [
-      { title: '功能規格書', children: [] },
-      { title: '使用者故事', children: [] },
-      { title: '驗收標準', children: [] },
+    { title: 'SIT 階段', children: [
+      { title: '環境建置', children: [
+        { title: '主機申請', children: [] },
+        { title: '防火牆設定', children: [] },
+        { title: '連線測試', children: [] },
+        { title: '執行環境 / 驅動安裝', children: [] },
+      ]},
+      { title: '測試執行', children: [
+        { title: '功能測試', children: [] },
+        { title: '整合測試', children: [] },
+      ]},
+      { title: 'IT 測試報告', children: [] },
     ]},
-    { title: '開發實作', children: [
-      { title: '後端開發', children: [] },
-      { title: '前端開發', children: [] },
-      { title: '單元測試', children: [] },
-    ]},
-    { title: '環境與防火牆', children: [
-      { title: '主機申請', children: [] },
-      { title: '主機環境建置', children: [] },
-      { title: '開發環境設定', children: [] },
-      { title: '測試環境設定', children: [] },
-      { title: '防火牆規則申請', children: [] },
-      { title: '環境驗證', children: [] },
-    ]},
-    { title: '上線準備', children: [
-      { title: '部署計畫', children: [] },
-      { title: '回滾計畫', children: [] },
-      { title: '上線審批', children: [] },
-      { title: '正式部署', children: [] },
-    ]},
-  ],
-  system: [
-    { title: '需求與規劃', children: [
-      { title: '需求訪談', children: [] },
-      { title: '可行性評估', children: [] },
-      { title: '時程規劃', children: [] },
-      { title: '資源評估', children: [] },
-    ]},
-    { title: '系統設計', children: [
-      { title: '架構設計', children: [] },
-      { title: '資料庫設計', children: [] },
-      { title: 'API 設計', children: [] },
-      { title: 'UI/UX 設計', children: [] },
-    ]},
-    { title: '開發實作', children: [
-      { title: '前端開發', children: [] },
-      { title: '後端開發', children: [] },
-      { title: '資料庫建置', children: [] },
-      { title: '第三方串接', children: [] },
-    ]},
-    { title: '環境與基礎設施', children: [
-      { title: '主機申請', children: [] },
-      { title: '主機環境建置', children: [] },
-      { title: '伺服器建置', children: [] },
-      { title: '防火牆規則設定', children: [] },
-      { title: '網路設定', children: [] },
-      { title: '監控設定', children: [] },
-    ]},
-    { title: '測試驗收', children: [
-      { title: '單元測試', children: [] },
-      { title: '整合測試', children: [] },
-      { title: '效能測試', children: [] },
-      { title: 'UAT', children: [] },
-    ]},
-    { title: '上線部署', children: [
-      { title: '部署計畫', children: [] },
-      { title: '資料遷移', children: [] },
-      { title: '上線審批', children: [] },
-      { title: '正式上線', children: [] },
-      { title: '上線後監控', children: [] },
+    { title: 'PROD 階段', children: [
+      { title: '環境建置', children: [
+        { title: '主機申請', children: [] },
+        { title: '防火牆設定', children: [] },
+        { title: '連線測試', children: [] },
+        { title: '執行環境 / 驅動安裝', children: [] },
+      ]},
+      { title: '上線準備', children: [
+        { title: 'USER 測試報告', children: [] },
+        { title: '資安檢核表', children: [] },
+      ]},
+      { title: '系統上線', children: [
+        { title: '正式部署', children: [] },
+        { title: '交易測試', children: [] },
+      ]},
     ]},
   ],
   project: [
-    { title: '專案啟動', children: [
-      { title: '專案章程', children: [] },
-      { title: '利害關係人分析', children: [] },
-      { title: '踢啟會議', children: [] },
+    { title: 'SIT 階段', children: [
+      { title: '環境建置', children: [
+        { title: '主機申請', children: [] },
+        { title: '防火牆設定', children: [] },
+        { title: '連線測試', children: [] },
+        { title: '執行環境 / 驅動安裝', children: [] },
+      ]},
+      { title: '測試執行', children: [
+        { title: '功能測試', children: [] },
+        { title: '整合測試', children: [] },
+      ]},
+      { title: '測試驗證', children: [
+        { title: '黑箱測試', children: [] },
+        { title: '白箱測試', children: [] },
+        { title: '第三方測試', children: [] },
+      ]},
+      { title: 'IT 測試報告', children: [] },
     ]},
-    { title: '需求收集', children: [
-      { title: '需求訪談', children: [] },
-      { title: '需求文件', children: [] },
-      { title: '需求確認', children: [] },
-    ]},
-    { title: '規劃', children: [
-      { title: 'WBS 建立', children: [] },
-      { title: '時程規劃', children: [] },
-      { title: '風險評估', children: [] },
-      { title: '資源分配', children: [] },
-    ]},
-    { title: '執行', children: [
-      { title: '開發製作', children: [] },
-      { title: '進度追蹤', children: [] },
-      { title: '品質確保', children: [] },
-    ]},
-    { title: '環境與部署', children: [
-      { title: '主機申請', children: [] },
-      { title: '主機環境建置', children: [] },
-      { title: '環境準備', children: [] },
-      { title: '防火牆設定', children: [] },
-      { title: '系統整合測試', children: [] },
-    ]},
-    { title: '交付與收尾', children: [
-      { title: '使用者訓練', children: [] },
-      { title: '文件交付', children: [] },
-      { title: '上線部署', children: [] },
-      { title: '專案結案', children: [] },
+    { title: 'PROD 階段', children: [
+      { title: '環境建置', children: [
+        { title: '主機申請', children: [] },
+        { title: '防火牆設定', children: [] },
+        { title: '連線測試', children: [] },
+        { title: '執行環境 / 驅動安裝', children: [] },
+      ]},
+      { title: '上線準備', children: [
+        { title: 'USER 測試報告', children: [] },
+        { title: '資安檢核表', children: [] },
+      ]},
+      { title: '系統上線', children: [
+        { title: '正式部署', children: [] },
+        { title: '交易測試', children: [] },
+      ]},
     ]},
   ],
 };
