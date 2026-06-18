@@ -1016,6 +1016,9 @@ function addChildNode(parentId) {
 }
 
 function deleteNode(id) {
+  const node = findNode(tree, id);
+  const label = node ? `「${node.title}」` : '此節點';
+  if (!confirm(`確定要刪除 ${label}？此操作無法復原。`)) return;
   const [nt] = removeNode(tree, id);
   tree = nt;
   delete expandedNotes[id];
