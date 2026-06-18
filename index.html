@@ -343,6 +343,7 @@
     <div><span class="stat-val" id="s-total">0</span> 工作項目</div>
     <div><span class="stat-val" id="s-roots">0</span> 主要群組</div>
     <div><span class="stat-val" id="s-depth">0</span> 最大層級</div>
+    <div><span class="stat-val" id="s-done">0/0（0%）</span> 完成</div>
   </div>
 </div>
 
@@ -794,6 +795,9 @@ function render() {
   document.getElementById('s-roots').textContent = tree.length;
   const maxDepth = allNodes.length ? Math.max(...allNodes.map(n => n.level)) + 1 : 0;
   document.getElementById('s-depth').textContent = maxDepth;
+  const doneCount = allNodes.filter(n => n.status === 'done').length;
+  const pct = allNodes.length ? Math.round(doneCount / allNodes.length * 100) : 0;
+  document.getElementById('s-done').textContent = `${doneCount}/${allNodes.length}（${pct}%）`;
 }
 
 // ── Status ──
