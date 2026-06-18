@@ -36,6 +36,8 @@ let draggingId = null;      // 拖曳中的節點 id
 let overId = null;          // 目前拖曳懸停的節點 id（drag-over 視覺提示用）
 let expandedNotes = {};     // { [nodeId]: boolean }，備註列展開狀態
 let dropPosition = null;    // 'before' | 'child'，dragover 時更新
+let filterText   = '';      // 搜尋關鍵字（已 toLowerCase）
+let filterStatus = 'all';   // 'all' | 'not-started' | 'in-progress' | 'done'
 ```
 
 **節點資料結構**：
@@ -79,6 +81,9 @@ let dropPosition = null;    // 'before' | 'child'，dragover 時更新
 | `isDescendant(nodes, ancestorId, targetId)` | 判斷 targetId 是否為 ancestorId 的後代（防循環拖曳） |
 | `getNodeDepth(nodes, id, depth)` | 取得節點在樹中的深度（0-indexed） |
 | `subtreeDepth(node)` | 取得節點子樹的最大高度（用於拖曳層級限制） |
+| `expandAll()` | 展開所有節點（`collapsed = {}`） |
+| `collapseAll()` | 收合所有有子節點的節點 |
+| `exportXLSX()` | 匯出 XLSX（需要 SheetJS inline bundle） |
 
 **拖曳排序**：`dragstart/drop` 事件觸發 `removeNode` + `insertBefore`/`addChildTo`。`dragover` 以 `getBoundingClientRect()` 判斷游標位置（上半 = 同層插前、下半 = 成子項），支援跨層移動；層級超過 5 層或拖曳到自身後代時阻擋。
 
@@ -98,6 +103,8 @@ let dropPosition = null;    // 'before' | 'child'，dragover 時更新
 - 節點狀態標籤（未開始 / 進行中 / 完成，點擊循環切換）✓
 - 節點備註欄位（展開列，blur 儲存）✓
 
-## 第 3 階段（選用）
+## 第 3 階段
 
-XLSX 匯出（SheetJS inline bundle）、列印 PDF 樣式、甘特圖 SVG 預覽。
+- XLSX 匯出（SheetJS inline bundle）✓
+- 列印 PDF 樣式（選用）
+- 甘特圖 SVG 預覽（選用）
