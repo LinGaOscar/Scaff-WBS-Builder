@@ -47,7 +47,7 @@ let filterStatus = 'all';   // 'all' | 'not-started' | 'in-progress' | 'done'
 ```
 
 `owner`/`startDate`/`endDate` 為選填欄位（節點列右側的「時間起訖／負責人」）。**行為差異**：
-- 透過 `addRoot/addSibling/addChildNode` 建立的節點**不含**這三個欄位
+- 透過 `addRoot/addChildNode` 建立的節點**不含**這三個欄位
 - 透過 `injectIds()`（模板套用或 JSON 匯入）建立的節點這三個欄位**一律為空字串 `""`**
 - 兩種情形 `node[field]` truthy 檢查與 `updateNodeField` 都能正確處理
 
@@ -85,6 +85,15 @@ let filterStatus = 'all';   // 'all' | 'not-started' | 'in-progress' | 'done'
 | `collapseAll()` | 收合所有有子節點的節點 |
 | `exportXLSX()` | 匯出 XLSX（需要 SheetJS inline bundle） |
 | `syncParentStatus(nodes)` | 由底往上遞迴計算父項狀態：allDone→done、anyStarted→in-progress、否則 not-started；在任何改變子項狀態的操作後呼叫 |
+| `exportJSON()` | 匯出目前 tree 為 JSON 檔案下載 |
+| `showToast(msg, isError)` | 顯示右下角 toast 通知（isError=true 時紅色） |
+
+**常數**：
+
+| 常數 | 說明 |
+|------|------|
+| `STATUS_CYCLE` | `{ 'not-started': 'in-progress', 'in-progress': 'done', 'done': 'not-started' }`，`cycleStatus` 查表用 |
+| `STATUS_LABEL` | `{ 'not-started': '未開始', 'in-progress': '進行中', 'done': '完成' }`，UI 顯示與 CSV/XLSX 匯出用 |
 
 **拖曳排序**：`dragstart/drop` 事件觸發 `removeNode` + `insertBefore`/`addChildTo`。`dragover` 以 `getBoundingClientRect()` 判斷游標位置（上半 = 同層插前、下半 = 成子項），支援跨層移動；層級超過 5 層或拖曳到自身後代時阻擋。
 
@@ -94,7 +103,7 @@ let filterStatus = 'all';   // 'all' | 'not-started' | 'in-progress' | 'done'
 
 **父項狀態自動計算**：有子節點的父項狀態**不可手動更改**（`cycleStatus` 直接 return），由 `syncParentStatus(tree)` 自動推算。凡改變樹狀結構或子項狀態的操作（`cycleStatus`、`deleteNode`、`addChildNode`）執行後都須呼叫一次 `syncParentStatus`。
 
-> ⚠️ 注意：早期版本曾有「AI 生成」功能（直接呼叫 Anthropic API），已於 commit `32b4194` 移除，目前程式碼**沒有**任何 AI 相關邏輯。`建置計畫書.md` 中提及 AI 生成的段落已過時，請勿依此重新引入。
+> ⚠️ 注意：早期版本曾有「AI 生成」功能（直接呼叫 Anthropic API），已於 commit `32b4194` 移除，目前程式碼**沒有**任何 AI 相關邏輯，請勿重新引入。另：`addSibling` 函式雖存在於程式碼中，但 UI 已移除，為死碼，勿再連結至任何按鈕。
 
 **匯出 CSV**：含 UTF-8 BOM（`﻿`），確保 Excel 直接開啟中文不亂碼；欄位含編號、層級、工作項目、負責人、開始/結束日期、狀態。
 
