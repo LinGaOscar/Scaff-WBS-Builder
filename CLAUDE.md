@@ -88,7 +88,7 @@ let filterStatus = 'all';   // 'all' | 'not-started' | 'in-progress' | 'done'
 
 **拖曳排序**：`dragstart/drop` 事件觸發 `removeNode` + `insertBefore`/`addChildTo`。`dragover` 以 `getBoundingClientRect()` 判斷游標位置（上半 = 同層插前、下半 = 成子項），支援跨層移動；層級超過 5 層或拖曳到自身後代時阻擋。
 
-**WBS 模板**：`TEMPLATES` 物件（`feature`「新功能開發」／`project`「專案開發」兩種）定義純資料樹（不含 id），`applyTemplate(key)` 以 `injectIds()` 補 id 後整棵取代 `tree`，確認框防止誤觸，並重置 `filterText`/`filterStatus`。每個模板含 SIT 階段（環境建置、測試執行、IT 測試報告）與 PROD 階段（環境建置、上線準備、系統上線）；`project` 多一個「測試驗證」（黑箱/白箱/第三方）在 PROD。新增模板請直接擴充 `TEMPLATES`，並在 `#tpl-panel` 加對應 `.tpl-card`。
+**WBS 模板**：`TEMPLATES` 物件定義在 **`templates/templates.js`**（外部 JS 檔，`index.html` 以 `<script src>` 引入），含 `feature`「新功能開發」與 `project`「專案開發」兩種。`applyTemplate(key)` 以 `injectIds()` 補 id 後整棵取代 `tree`，確認框防止誤觸，並重置 `filterText`/`filterStatus`。每個模板含 SIT 階段（環境建置、測試執行、IT 測試報告）與 PROD 階段（環境建置、上線準備、系統上線）；`project` 多一個「測試驗證」（黑箱/白箱/第三方）在 PROD。**新增或修改模板只需編輯 `templates/templates.js`**，並在 `#tpl-panel` 加對應 `.tpl-card`。
 
 **Header 結構**：分兩列——`#header-row1` 含搜尋輸入、狀態篩選、模板、全展開/收合、新增大項；`#header-row2` 含 CSV、XLSX、JSON 匯出與匯入按鈕。
 
