@@ -18,6 +18,17 @@ start index.html       # Windows
 
 修改後重新整理頁面（F5）即可看到效果。
 
+## index.html 行號導覽
+
+`index.html` 共 1050 行，結構如下：
+
+| 行範圍 | 內容 |
+|--------|------|
+| 1–395 | HTML 結構 + CSS（含 `:root` 變數與 RWD） |
+| 396–421 | SheetJS inline bundle（minified，勿編輯） |
+| 422 | `<script src="templates/templates.js">` |
+| 423–1048 | 業務邏輯 JS（全域狀態、函式定義、事件綁定） |
+
 ## 核心限制
 
 - **禁止引入任何 CDN 或 npm 套件**。若第三方套件必要（如 SheetJS），需手動 inline 進 HTML。
@@ -85,7 +96,16 @@ let filterStatus = 'all';   // 'all' | 'not-started' | 'in-progress' | 'done'
 | `collapseAll()` | 收合所有有子節點的節點 |
 | `exportXLSX()` | 匯出 XLSX（需要 SheetJS inline bundle） |
 | `syncParentStatus(nodes)` | 由底往上遞迴計算父項狀態：allDone→done、anyStarted→in-progress、否則 not-started；在任何改變子項狀態的操作後呼叫 |
+| `toggleTpl()` | 顯示 / 隱藏 `#tpl-panel` 模板選擇面板 |
+| `applyTemplate(key)` | 套用指定 key 的模板（確認框 + `injectIds` + render） |
+| `addRoot()` | 新增根層節點至 tree 末尾 |
+| `addChildNode(parentId)` | 新增子節點至指定父節點末尾（觸發 `syncParentStatus`） |
+| `deleteNode(id)` | 刪除節點（含子樹），確認框防止誤觸 |
+| `exportCSV()` | 匯出 CSV（含 UTF-8 BOM，欄位：編號/層級/工作項目/負責人/起訖日期/狀態） |
+| `exportXLSX()` | 自建 XLSX ZIP（STORE 無壓縮）：純 JS 組合 7 個 XML 打包成 `.xlsx`，含完整 styles.xml（11 種 cellXfs）、sharedStrings.xml、欄寬與凍結標題列；SheetJS 社群版不寫 cell styles 故改用此方案 |
 | `exportJSON()` | 匯出目前 tree 為 JSON 檔案下載 |
+| `importJSON()` | 觸發隱藏 `<input type="file">` 開啟檔案選擇 |
+| `handleImport(e)` | 讀取選擇的 JSON 檔，`injectIds` 後替換整棵 tree |
 | `showToast(msg, isError)` | 顯示右下角 toast 通知（isError=true 時紅色） |
 
 **常數**：
@@ -119,7 +139,7 @@ let filterStatus = 'all';   // 'all' | 'not-started' | 'in-progress' | 'done'
 - 全展開 / 全收合 ✓
 - 狀態統計（Stats 列完成進度）✓
 - 關鍵字搜尋 + 狀態篩選（含已收合子樹）✓
-- XLSX 匯出（SheetJS inline bundle）✓
+- XLSX 匯出（自建 ZIP，含真實 cell styles、欄寬、凍結標題列）✓
 - Header 雙列結構（操作列 / IO 列）✓
 - 刪除確認告警視窗 ✓
 

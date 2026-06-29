@@ -987,19 +987,118 @@ function exportCSV() {
 
 function exportXLSX() {
   const nums = numbering(tree);
-  const rows = [['編號','層級','工作項目','負責人','開始日期','結束日期','狀態']];
-  const walk = (nodes, level=0) => nodes.forEach(n => {
-    rows.push([nums[n.id], level+1, n.title, n.owner||'', n.startDate||'', n.endDate||'', STATUS_LABEL[n.status||'not-started']]);
-    walk(n.children, level+1);
+
+  // 樣式索引：1=標題, 2/3=層0左/中, 4/5=層1左/中, 6/7=層2+左/中, 8/9/10=狀態
+  const SI = { hdr:1, l0L:2,l0C:3, l1L:4,l1C:5, l2L:6,l2C:7, stNS:8,stIP:9,stDN:10 };
+  const lvlL = [SI.l0L,SI.l1L,SI.l2L,SI.l2L,SI.l2L];
+  const lvlC = [SI.l0C,SI.l1C,SI.l2C,SI.l2C,SI.l2C];
+  const stSI = { 'not-started':SI.stNS, 'in-progress':SI.stIP, 'done':SI.stDN };
+
+  // ── 資料列 ──
+  const HDRS = ['編號','層級','工作項目','負責人','開始日期','結束日期','狀態'];
+  const rows = [HDRS.map(h => ({ v:h, t:'s', s:SI.hdr }))];
+  const walk = (nodes, lv=0) => nodes.forEach(n => {
+    const st = n.status||'not-started';
+    const L = lvlL[Math.min(lv,4)], C = lvlC[Math.min(lv,4)];
+    rows.push([
+      { v:nums[n.id]||'',  t:'s', s:C },
+      { v:lv+1,            t:'n', s:C },
+      { v:n.title,         t:'s', s:L },
+      { v:n.owner||'',     t:'s', s:L },
+      { v:n.startDate||'', t:'s', s:C },
+      { v:n.endDate||'',   t:'s', s:C },
+      { v:STATUS_LABEL[st],t:'s', s:stSI[st] },
+    ]);
+    walk(n.children, lv+1);
   });
   walk(tree);
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = rows[0].map((_, i) => ({
-    wch: Math.max(...rows.map(r => String(r[i]||'').length)) + 2
-  }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'WBS');
-  XLSX.writeFile(wb, 'wbs.xlsx');
+
+  // ── 共享字串表（去重） ──
+  const ssMap = new Map(), ssl = [];
+  const ssI = v => { if (!ssMap.has(v)) { ssMap.set(v, ssl.length); ssl.push(v); } return ssMap.get(v); };
+  rows.forEach(r => r.forEach(c => { if (c.t==='s' && c.v!=='') ssI(c.v); }));
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  // ── 欄字母 ──
+  const col = n => { let s=''; for(n++;n>0;){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26);}return s; };
+
+  // ── XLSX XML 檔案 ──
+  const CT = `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+  const RELS = `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const WB = `<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="WBS" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+  const WBRELS = `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const SS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${ssl.length}" uniqueCount="${ssl.length}">${ssl.map(s=>`<si><t xml:space="preserve">${esc(s)}</t></si>`).join('')}</sst>`;
+
+  // 樣式：5字型 / 9填色(前2必要) / 2邊框 / 11格式
+  const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="5"><font><sz val="11"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="12"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FF6B7280"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FFB45309"/><name val="Calibri"/><family val="2"/></font><font><b/><sz val="11"/><color rgb="FF15803D"/><name val="Calibri"/><family val="2"/></font></fonts><fills count="9"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1E3A5F"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDBEAFE"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEFF6FF"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF8FAFC"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFF3F4F6"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDCFCE7"/></patternFill></fill></fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFD1D5DB"/></left><right style="thin"><color rgb="FFD1D5DB"/></right><top style="thin"><color rgb="FFD1D5DB"/></top><bottom style="thin"><color rgb="FFD1D5DB"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="11"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="3" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="4" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf><xf numFmtId="0" fontId="0" fillId="5" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="2" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="3" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf><xf numFmtId="0" fontId="4" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs></styleSheet>`;
+
+  // 欄寬（character 單位）: 編號/層級/工作項目/負責人/起訖日期/狀態
+  const colW = [10,6,42,14,11,11,10];
+  let sheetXml = '';
+  rows.forEach((row, ri) => {
+    sheetXml += `<row r="${ri+1}" ht="${ri===0?24:18}" customHeight="1">`;
+    row.forEach((c, ci) => {
+      const ref = `${col(ci)}${ri+1}`;
+      if (c.t==='s') sheetXml += c.v!=='' ? `<c r="${ref}" s="${c.s}" t="s"><v>${ssMap.get(c.v)}</v></c>` : `<c r="${ref}" s="${c.s}"/>`;
+      else           sheetXml += `<c r="${ref}" s="${c.s}"><v>${c.v}</v></c>`;
+    });
+    sheetXml += '</row>';
+  });
+  const SHEET = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetFormatPr defaultRowHeight="18"/><cols>${colW.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${sheetXml}</sheetData></worksheet>`;
+
+  // ── 打包成 ZIP（STORE，無壓縮）──
+  const te = new TextEncoder();
+  const crcT = new Uint32Array(256);
+  for (let i=0;i<256;i++){let c=i;for(let j=0;j<8;j++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);crcT[i]=c;}
+  const crc32 = b=>{let c=0xFFFFFFFF;for(const x of b)c=crcT[(c^x)&0xFF]^(c>>>8);return(c^0xFFFFFFFF)>>>0;};
+
+  const zipFiles = [
+    ['[Content_Types].xml',          CT],
+    ['_rels/.rels',                   RELS],
+    ['xl/workbook.xml',               WB],
+    ['xl/_rels/workbook.xml.rels',    WBRELS],
+    ['xl/sharedStrings.xml',          SS],
+    ['xl/styles.xml',                 STYLES],
+    ['xl/worksheets/sheet1.xml',      SHEET],
+  ].map(([name, xml]) => ({ nb: te.encode(name), db: te.encode(xml) }));
+
+  let cdOff = 0;
+  const locals = zipFiles.map(f => {
+    const crc=crc32(f.db), sz=f.db.length;
+    const h = new Uint8Array(30+f.nb.length+sz);
+    const dv = new DataView(h.buffer);
+    dv.setUint32(0,0x04034B50,true); dv.setUint16(4,20,true);
+    dv.setUint32(14,crc,true); dv.setUint32(18,sz,true); dv.setUint32(22,sz,true);
+    dv.setUint16(26,f.nb.length,true);
+    h.set(f.nb,30); h.set(f.db,30+f.nb.length);
+    const off = cdOff; cdOff += h.length;
+    return { h, crc, sz, nb:f.nb, off };
+  });
+
+  const cds = locals.map(l => {
+    const cd = new Uint8Array(46+l.nb.length);
+    const dv = new DataView(cd.buffer);
+    dv.setUint32(0,0x02014B50,true); dv.setUint16(4,20,true); dv.setUint16(6,20,true);
+    dv.setUint32(16,l.crc,true); dv.setUint32(20,l.sz,true); dv.setUint32(24,l.sz,true);
+    dv.setUint16(28,l.nb.length,true); dv.setUint32(42,l.off,true);
+    cd.set(l.nb,46); return cd;
+  });
+  const cdSz = cds.reduce((s,c)=>s+c.length,0);
+
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0,0x06054B50,true);
+  ev.setUint16(8,zipFiles.length,true); ev.setUint16(10,zipFiles.length,true);
+  ev.setUint32(12,cdSz,true); ev.setUint32(16,cdOff,true);
+
+  const zip = new Uint8Array(cdOff+cdSz+22); let p=0;
+  locals.forEach(l=>{zip.set(l.h,p);p+=l.h.length;});
+  cds.forEach(cd=>{zip.set(cd,p);p+=cd.length;});
+  zip.set(eocd,p);
+
+  const blob = new Blob([zip],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a');
+  a.href=url; a.download='wbs.xlsx'; a.click(); URL.revokeObjectURL(url);
   showToast('XLSX 已匯出');
 }
 
